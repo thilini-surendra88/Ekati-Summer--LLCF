@@ -50,10 +50,26 @@ dataDir <- file.path('Data')
 ##### Global variables #####
 source('Graphs_for_LLCF_Update.R')
 
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
 
 options(scipen=3)###prevent scientific notation on figures
 
-pacman::p_load(here,zoo,MASS,fBasics,akima,plotrix,ggplot2,dplyr,scales,formattable,kableExtra,reshape,xtable,openxlsx,XLConnect)
+pacman::p_load(here,zoo,MASS,fBasics,akima,plotrix,ggplot2,dplyr,scales,formattable,kableExtra,reshape,xtable,openxlsx,XLConnect, readxl, knitr)
+
+
+
+library(dplyr, warn.conflicts = FALSE)
+# Suppress summarise info
+options(dplyr.summarise.inform = FALSE)
+
+
+
+
+```
+
+
+```{r Reading data files, results= "asis"}
+
 ##### Global variables #####
 # UPDATE DATAFILE WITH CURRENT YEAR
 ### Must be in month/day/year format####
@@ -86,53 +102,87 @@ LLCFpump.strategies.2020 <-  read.table(file.path(dataDir,'2020 Strategies_Jul8.
 
 #eval = FALSE, echo = FALSE
 
-file.upate <- 'Updated July 9, 2020' ##Last file download
 
-
-observed.date <- as.Date("05/01/2019","%m/%d/%Y")
-observed.date.p <- as.character(observed.date)  ##Last day of observed data
 eqc.list <- read.table(file.path(dataDir,'eqc.list.csv'),sep=",",header=T)
 
 benchmarkin <- file.path(dataDir,'benchmark.list.csv')
 benchmark.all <- read.table(benchmarkin,sep=",",header=T) ##***need to update for 2018
 
 
+
 ```
 
 
-```{r observed_potassium, results="asis", echo=FALSE, figure.align = "left", fig.height=6, fig.width=8.5}
+
+```{r initialize inputs, results="asis"}
+
+##change here for inputs
+
 
 syear <- 2017
 year <- 2020
 p <- 1 #potassium
-param <- as.character(param.list[p,'Variable'])
-dataAll <- getData(observedin,param,syear)
+
+file.upate <- 'Updated July 9, 2020' ##Last file download
+observed.date <- as.Date("05/01/2019","%m/%d/%Y")
+observed.date.p <- as.character(observed.date)  ##Last day of observed data
+
 
 
 CellD.Stations <- c("RW1","LLD01","LLD05","LLD03","LLD04","1616-28A")
 ##Get current data for Cell D
 
+CellE.Stations <- c("LLE07","LLE03","LLE05","1616-29A")
+##Get current data for Cell E
+
+CellE.Stations <- c("161630 (LLCF)")
+##Get current data for Cell E
+
+
+CellC.Stations <- c("1616-26B")
+##Get current data for Cell C
+
+
+
+Lake.Stations <- c("Leslie","Moose")
+##Get current data for lakes
+
+```
+
+
+```{r Data manipulation, results="asis"}
+
+param <- as.character(param.list[p,'Variable'])
+dataAll <- getData(observedin,param,syear)
+
+
+
 for(station in CellD.Stations){
+  
   station.label <- gsub("-",".",station)
+  
   assign(paste0('current.date.', station.label), as.Date(as.integer(Cell.current(dataAll,"Cell D",station)[1])))
+  
   assign(paste0('current.',param, station.label), Cell.current(dataAll,"Cell D",station)[2])
+  
   assign(paste0("n.",station.label), Cell.current(dataAll,"Cell D",station)[3])
 
 }
 
-CellE.Stations <- c("LLE07","LLE03","LLE05","1616-29A")
-##Get current data for Cell E
 
 for(station in CellE.Stations){
   station.label <- gsub("-",".",station)
+
+  
   assign(paste0('current.date.', station.label), as.Date(as.integer(Cell.current(dataAll,"Cell E",station)[1])))
+  
+  
   assign(paste0('current.',param, station.label), Cell.current(dataAll,"Cell E",station)[2])
-  assign(paste0("n.",station.label), Cell.current(dataAll,"Cell E",station)[3])
+  
+    assign(paste0("n.",station.label), Cell.current(dataAll,"Cell E",station)[3])
 
 }
 
-CellE.Stations <- c("161630 (LLCF)")
-##Get current data for Cell E
 
 for(station in CellE.Stations){
   assign(paste0('current.date.', '161630'), as.Date(as.integer(Cell.current(dataAll,"161630 (LLCF)",station)[1])))
@@ -141,19 +191,21 @@ for(station in CellE.Stations){
 
 }
 
-CellC.Stations <- c("1616-26B")
-##Get current data for Cell C
-
 for(station in CellC.Stations){
    station.label <- gsub("-",".",station)
-  assign(paste0('current.date.', station.label), as.Date(as.integer(Cell.current(dataAll,"Cell C",station)[1])))
+  
+
+   assign(paste0('current.date.', station.label), as.Date(as.integer(Cell.current(dataAll,"Cell C",station)[1])))
+   
+  
+      
   assign(paste0('current.',param, station.label), Cell.current(dataAll,"Cell C",station)[2])
+
+  
   assign(paste0("n.",station.label), Cell.current(dataAll,"Cell C",station)[3])
 
 }
 
-Lake.Stations <- c("Leslie","Moose")
-##Get current data for lakes
 
 for(station in Lake.Stations){
   assign(paste0('current.date.', station), as.Date(as.integer(Cell.current(dataAll,station,"")[1])))
