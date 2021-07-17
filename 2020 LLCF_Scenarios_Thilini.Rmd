@@ -54,8 +54,8 @@ knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
 
 options(scipen=3)###prevent scientific notation on figures
 
-pacman::p_load(here,zoo,MASS,fBasics,akima,plotrix,ggplot2,dplyr,scales,formattable,kableExtra,reshape,xtable,openxlsx,XLConnect, readxl, knitr)
-
+pacman::p_load(here,zoo,MASS,fBasics,akima,plotrix,ggplot2,dplyr,scales,formattable,kableExtra,reshape,xtable,openxlsx, readxl, knitr, lubridate, tinytex)
+ #XLConnect
 
 
 library(dplyr, warn.conflicts = FALSE)
@@ -109,6 +109,13 @@ benchmarkin <- file.path(dataDir,'benchmark.list.csv')
 benchmark.all <- read.table(benchmarkin,sep=",",header=T) ##***need to update for 2018
 
 
+WL.dir <- here(file.path("Data","Water.Levels2020.xls"))
+
+
+WL_CellC.masl.a<-read_excel(WL.dir, sheet="CellC.masl.a")
+WL_CellD.masl.a<-read_excel(WL.dir, sheet="CellD.masl.a")
+WL_CellE.masl.a<-read_excel(WL.dir, sheet="CellE.masl.a")
+
 
 ```
 
@@ -122,7 +129,14 @@ benchmark.all <- read.table(benchmarkin,sep=",",header=T) ##***need to update fo
 syear <- 2017
 year <- 2020
 p <- 1 #potassium
+##potassium eqc
+param <- as.character(param.list[p,'Variable'])
 
+
+#k.eqc <- 53
+para.eqc <- eqc.list %>% select({{param}}) %>% pull()
+  
+  
 file.upate <- 'Updated July 9, 2020' ##Last file download
 observed.date <- as.Date("05/01/2019","%m/%d/%Y")
 observed.date.p <- as.character(observed.date)  ##Last day of observed data
@@ -152,36 +166,12 @@ Lake.Stations <- c("Leslie","Moose")
 
 ```{r Data manipulation, results="asis"}
 
-param <- as.character(param.list[p,'Variable'])
 dataAll <- getData(observedin,param,syear)
 
 
+create_station_names("Cell D", CellD.Stations)
 
-for(station in CellD.Stations){
-  
-  station.label <- gsub("-",".",station)
-  
-  assign(paste0('current.date.', station.label), as.Date(as.integer(Cell.current(dataAll,"Cell D",station)[1])))
-  
-  assign(paste0('current.',param, station.label), Cell.current(dataAll,"Cell D",station)[2])
-  
-  assign(paste0("n.",station.label), Cell.current(dataAll,"Cell D",station)[3])
-
-}
-
-
-for(station in CellE.Stations){
-  station.label <- gsub("-",".",station)
-
-  
-  assign(paste0('current.date.', station.label), as.Date(as.integer(Cell.current(dataAll,"Cell E",station)[1])))
-  
-  
-  assign(paste0('current.',param, station.label), Cell.current(dataAll,"Cell E",station)[2])
-  
-    assign(paste0("n.",station.label), Cell.current(dataAll,"Cell E",station)[3])
-
-}
+create_station_names("Cell E", CellE.Stations)
 
 
 for(station in CellE.Stations){
@@ -191,34 +181,18 @@ for(station in CellE.Stations){
 
 }
 
-for(station in CellC.Stations){
-   station.label <- gsub("-",".",station)
-  
 
-   assign(paste0('current.date.', station.label), as.Date(as.integer(Cell.current(dataAll,"Cell C",station)[1])))
-   
-  
-      
-  assign(paste0('current.',param, station.label), Cell.current(dataAll,"Cell C",station)[2])
+create_station_names("Cell C", CellC.Stations)
 
-  
-  assign(paste0("n.",station.label), Cell.current(dataAll,"Cell C",station)[3])
-
-}
+create_station_names(NA , Lake.Stations)
 
 
-for(station in Lake.Stations){
-  assign(paste0('current.date.', station), as.Date(as.integer(Cell.current(dataAll,station,"")[1])))
-  assign(paste0('current.',param, station),  Cell.current(dataAll,station,"")[2])
-  assign(paste0("n.",station), Cell.current(dataAll,station,"")[3])
-
-}
 
 
 
 ```
 
-#2020 LLCF Predicted Water Levels and Potassium Concentration
+# 2020 LLCF Predicted Water Levels and Potassium Concentration
 
 
 The Discharge and pumping scenarios were developed to address the immediate need to lower water levels in Cells D and E and prevent exceedance of the 449.3 metre elevation during freshet next year, with secondary considerations of limiting potential to exceed the high action level for potassium concentrations in Leslie Lake in winter and retaining enough water to support process plant reclaim in 2021 (we assumed plant operation resumes in January 2021 for this modelling exercise). 
@@ -245,7 +219,7 @@ Model Uncertainties
 
 Table 1 provides a summary of the volumes for pumping in Discharge in 2020 and 2021 for each of the three proposed Scenarios. Table 2 provides the projected Leslie Lake concentrations under ice (Potassium Benchmark in Leslie Lake is 64 mg/L)
 
-###Table 1. LLCF Pumping Volumes (Mm^3^):
+### Table 1. LLCF Pumping Volumes (Mm^3^):
 | Pumped Flow Mm^3^  |Cell E to Leslie|Cell D to Cell E
 |---------------------|:--------:|:--------:|
 |**2020**|||
@@ -257,7 +231,7 @@ Table 1 provides a summary of the volumes for pumping in Discharge in 2020 and 2
 |Scenario 2 |5.8|1.5|
 |Scenario 3 |4.3|0|
 
-###Table 2. Leslie Lake Winter Concentration Projections:
+### Table 2. Leslie Lake Winter Concentration Projections:
 | Ice Thickness  (m)  |1.2|1.5|1.7|
 |---------------------|:--------:|:--------:|:--------:|
 |**2020/2021**||||
@@ -270,321 +244,83 @@ Table 1 provides a summary of the volumes for pumping in Discharge in 2020 and 2
 |Scenario 3 [K] (mg/L) |48.9|53.4|56.9|
 
 \newpage
-##Scenario 1:
+## Scenario 1:
 
 2020: Transfer of Cell D to Cell E at 1.0 Mm^3^ per week for four weeks beginning July 10, 2020. Discharge at permit limit rates for 20 days in July 2020.
 
 2021: Cell D to Cell E transfers (0.5 Mm^3^ in July and 1.0 Mm^3^ in September) and Discharge to Leslie Lake July to August.
 
 
-```{r Strat4_Capacity, results="asis", echo=FALSE, figure.align = "left", fig.height=10, fig.width=8.5}
+```{r plots scenarios1, results="asis", figure.align = "left", fig.height=10, fig.width=8.5}
 
 ## Divide plotting area into 2 plots: with  Legend
 layout(matrix(c(1,2,3),3,1,byrow=T),c(5),c(5,5,1))
 
 ###Plot 1- Scenario 1- 2020
 ##############
-par(mar=c(5,8,2,4))
-
-##Scenario 1
-#Data generation
-
-#formatDate
-LLCFpump.strategies.2020[,'Date'] <- as.Date(LLCFpump.strategies.2020[,'Date'],"%m/%d/%Y")
-
-
-#Scenario
-#1
-ind.s <- which(LLCFpump.strategies.2020[,'Strategy']=='1')
-ind.m <- which(LLCFpump.strategies.2020[,'Month1']>= 6 & LLCFpump.strategies.2020[,'Year1']== 2020 )
-
-ind.ss <- intersect(ind.s,ind.m)
-Strat <- LLCFpump.strategies.2020[ind.ss,]
-
-bars <- Strat[,c('CellDtoE','CellEtoLeslie')]
-potassium.D <- Strat[,c('Date','CellD.K')]
-potassium.E <- Strat[,c('Date','CellE.K')]
-ymin= 0
-ymax=3500000
-
-
-barplot(as.matrix(t(bars)),beside=TRUE,yaxt = "n", xaxt="n",ylim=c(ymin,ymax),col=c("blue","orange"))
-
-axis(2,at=pretty(ymin:ymax), labels= formatC(pretty(ymin:ymax), format="g", big.mark=',',digits=nchar(as.character(ymax))),cex=.5,cex.axis=.85, las=2)
-
-axis(side = 1,at=c(2,5,8,11,14,17,20,23,26,29,32,35,38,41,44,47,50,53,56,59,62,65,68,71,74,77,80,83),labels = rep(c("1","2","3","4"),7), cex.axis=0.7,tcl=-0.25)
-axis(side = 1,at=seq(12,112,12), labels = FALSE,tcl=-1.5)
-
-mtext("Scenario 1 - 2020",side=3,line=0.5,font=2,cex=1.1,adj=0)
-
-box()
-
-
-
-mtext(text=c("June", "July","Aug","Sept","Oct","Nov","Dec"),side = 1, line = c(2), at = seq(7,84,by=12),cex=0.7)
-mtext(text='Week',side=1,line=c(1),at=-2, cex=0.7)
-ylab.text = expression('Pumped Volume (m'^"3"*')')
-
-mtext(ylab.text,side=2,line=4,font=2)
-
-par(new = TRUE)
-ymax <- 70
-plot(potassium.D, type = "n", xlab = "", ylab = "", yaxt = "n", xaxt="n",ylim = c(0, ymax))
-lines(potassium.D, col = "blue", lwd = 2)
-lines(potassium.E, col = "orange", lwd = 2)
-#add EQC
-segments(as.Date("2020-01-01"),53,as.Date("2020-12-31"),53,col='orange',lty=2)
-
-
-##add Cumulative Volume
-
-CellE.Vol <- paste('Cell E To Leslie Total = ',formatC(sum(bars[2]), format="g", big.mark=',',digits=nchar(as.character(sum(bars[2]))))) 
-CellD.Vol <- paste('Cell D To Cell E Total = ',formatC(sum(bars[1]), format="g", big.mark=',',digits=nchar(as.character(sum(bars[1])))))
-
-CellE.Vol.T <-  bquote(.(CellE.Vol) ~ m^3)
-CellD.Vol.T <-  bquote(.(CellD.Vol) ~ m^3)
-
-text(as.Date("2020-08-01"),27,CellE.Vol.T,adj= 0,cex=0.9)
-text(as.Date("2020-08-01"),22,CellD.Vol.T,adj= 0,cex=0.9)
-
-axis(4,at=pretty(ymin:ymax),cex=.5,cex.axis=.85, las=2)
-mtext("Potassium (mg/L)", side = 4, line = 3, font = 2)
+plot_pumped_volume(2020,'1', 6,para.eqc)
 
 par(mar=c(5,8,2,6))
 
 ###Plot 2- Scenario 1- 2021
 ##############
-par(mar=c(5,8,2,4))
-
-##Scenario 1
-#Data generation
-
-#formatDate
-LLCFpump.strategies.2020[,'Date'] <- as.Date(LLCFpump.strategies.2020[,'Date'],"%m/%d/%Y")
-
-
-#Scenario
-#1
-ind.s <- which(LLCFpump.strategies.2020[,'Strategy']=='1')
-ind.m <- which(LLCFpump.strategies.2020[,'Month1']>= 6 & LLCFpump.strategies.2020[,'Year1']== 2021 )
-
-ind.ss <- intersect(ind.s,ind.m)
-Strat <- LLCFpump.strategies.2020[ind.ss,]
-
-bars <- Strat[,c('CellDtoE','CellEtoLeslie')]
-potassium.D <- Strat[,c('Date','CellD.K')]
-potassium.E <- Strat[,c('Date','CellE.K')]
-ymin= 0
-ymax=3500000
-barplot(as.matrix(t(bars)),beside=TRUE,yaxt = "n", xaxt="n",ylim=c(ymin,ymax),col=c("blue","orange"))
-
-axis(2,at=pretty(ymin:ymax), labels= formatC(pretty(ymin:ymax), format="g", big.mark=',',digits=nchar(as.character(ymax))),cex=.5,cex.axis=.85, las=2)
-
-axis(side = 1,at=c(2,5,8,11,14,17,20,23,26,29,32,35,38,41,44,47,50,53,56,59,62,65,68,71,74,77,80,83),labels = rep(c("1","2","3","4"),7), cex.axis=0.7,tcl=-0.25)
-axis(side = 1,at=seq(12,112,12), labels = FALSE,tcl=-1.5)
-
-mtext("Scenario 1 - 2021",side=3,line=0.5,font=2,cex=1.1,adj=0)
-
-box()
-
-
-
-mtext(text=c("June", "July","Aug","Sept","Oct","Nov","Dec"),side = 1, line = c(2), at = seq(7,84,by=12),cex=0.7)
-mtext(text='Week',side=1,line=c(1),at=-2, cex=0.7)
-ylab.text = expression('Pumped Volume (m'^"3"*')')
-
-mtext(ylab.text,side=2,line=4,font=2)
-
-par(new = TRUE)
-ymax <- 70
-plot(potassium.D, type = "n", xlab = "", ylab = "", yaxt = "n", xaxt="n",ylim = c(0, ymax))
-lines(potassium.D, col = "blue", lwd = 2)
-lines(potassium.E, col = "orange", lwd = 2)
-#add EQC
-segments(as.Date("2021-01-01"),53,as.Date("2021-12-31"),53,col='orange',lty=2)
-
-
-##add Cumulative Volume
-
-CellE.Vol <- paste('Cell E To Leslie Total = ',formatC(round(sum(bars[2]),0), format="g", big.mark=',',digits=nchar(as.character(round(sum(bars[2]),0))))) 
-CellD.Vol <- paste('Cell D To Cell E Total = ',formatC(round(sum(bars[1]),0), format="g", big.mark=',',digits=nchar(as.character(round(sum(bars[1]),0)))))
-
-CellE.Vol.T <-  bquote(.(CellE.Vol) ~ m^3)
-CellD.Vol.T <-  bquote(.(CellD.Vol) ~ m^3)
-
-text(as.Date("2021-08-01"),25,CellE.Vol.T,adj= 0, cex=0.9)
-text(as.Date("2021-08-01"),20,CellD.Vol.T,adj= 0, cex=0.9)
-
-axis(4,at=pretty(ymin:ymax),cex=.5,cex.axis=.85, las=2)
-mtext("Potassium (mg/L)", side = 4, line = 3, font = 2)
+plot_pumped_volume(2021,'1', 6,para.eqc)
 
 ###2. Legend
 
-par(mar=c(1,1,1,1))
-plot.new()
-plot.window(c(0,1), c(0,1));
-box()
-l.cex =1.1
-legend.names <- c('Cell D to E', 'Cell E to Leslie Lake', 'Potassium - Cell D', 'Potassium - Cell E')
-legend.col <- c('blue','orange','blue','orange')
+plot_legends(para.eqc)
 
-
-
-legend(x=0.4,y=.38,'EQC = 53 mg/L',lty=2,col= 'orange', bty='n',cex = l.cex,lwd=1)
-
-legend(x=0.02,y=.85,legend.names[1:2],pch=c(15,15),pt.bg=legend.col[1:2],col= legend.col[1:2], pt.cex= 2.5,bty='n',cex = l.cex)
-
-legend(x=0.4,y=.85,legend.names[3:4],lty=c(1,1),col= legend.col[1:2],bty='n',lwd=1.1,cex = l.cex)
 ```
 
-##Predicted versus Observed
+## Predicted versus Observed
 
 
-```{r Strat1_WL, results="asis", echo=FALSE, figure.align = "left", fig.height=4.5, fig.width=8.5}
-#formatDate
-LLCFpump.strategies.2020[,'Date'] <- as.Date(LLCFpump.strategies.2020[,'Date'],"%m/%d/%Y")
+```{r Scenario 1 Water levels, results="asis", figure.align = "left", fig.height=4.5, fig.width=8.5}
 
-#Scenario
-#4
-ind.s <- which(LLCFpump.strategies.2020[,'Strategy']=='1')
-predicted.wl <- LLCFpump.strategies.2020[ind.s, c('Date','CellC.masl','CellD.masl','CellE.masl')]
- 
-WL.dir <- here(file.path("Data","Water.Levels2020.xls"))
+####Scenario 1- obs vs pred Water levels
+obs_and_pred_WL <- manipulate_data_for_plots('1',year)
 
-#WL<-loadWorkbook("Water.Levels2020.xls")
-#Raw data
- #CellC.masl.a<-readWorksheet(WL,sheet="CellC.masl.a",startRow=1,header=TRUE)%>%
-    
+##predicted WL
+predicted.wl <- obs_and_pred_WL[[1]]
 
-WL_CellC.masl.a<-read_excel(WL.dir, sheet="CellC.masl.a")
-
-    CellC.masl.a <- WL_CellC.masl.a %>% 
-    mutate(Date = as.Date(Date, "%m/%d/%Y",tz="America/New_York"))%>%
-   filter(Date >= as.Date("2020-01-01"))
-
-WL_CellD.masl.a<-read_excel(WL.dir, sheet="CellD.masl.a")
-     
-    CellD.masl.a<- WL_CellD.masl.a %>%
-   mutate(Date = as.Date(Date, "%m/%d/%Y",tz="America/New_York"))%>%
-   filter(Date >= as.Date("2020-01-01"))
-
-WL_CellE.masl.a<-read_excel(WL.dir, sheet="CellE.masl.a")
- 
-    
-    CellE.masl.a<- WL_CellE.masl.a %>%
-   mutate(Date = as.Date(Date, "%m/%d/%Y",tz="America/New_York"))%>%
-   filter(Date >= as.Date("2020-01-01"))
-
-  
-   
+##observed WL for each CEll C,D,E
+CellC.masl.a <- obs_and_pred_WL[[2]]
+CellD.masl.a <- obs_and_pred_WL[[3]]
+CellE.masl.a <- obs_and_pred_WL[[4]]
 
 
 tc <- nrow(CellC.masl.a)
 td <- nrow(CellD.masl.a)
 te <- nrow(CellE.masl.a)
 
-Current.measure.date <- "Measured on July 5, 2020"
-last.measure.date <- "Measured on July 5, 2020"
+
+######## Scenario 1, water level
 
 
+plot_observed_vs_predicted(predicted.wl,
+                           CellC.masl.a,
+                           CellD.masl.a,
+                           CellE.masl.a,
+                           scenario.num = '1',
+                           year,
+                           variable = 'Water Level (masl)')
 
-ggplot(predicted.wl, aes(Date)) + 
    
-  geom_line(aes(y = CellD.masl, colour = "Cell D")) +
-  geom_line(aes(y = CellE.masl, colour = "Cell E")) +
-  geom_hline(yintercept=449.3, linetype="dashed", color = "blue") +
-  geom_hline(yintercept=447, linetype="dashed", color = "blue") +
-  geom_hline(yintercept=458, linetype="dashed", color = "purple") +
-  geom_hline(yintercept=445.5, linetype="dashed", color = "orange") +
-  
-  geom_point(data=CellC.masl.a, aes (y=y),colour="purple") +  
-  geom_point(data=CellD.masl.a, aes (y=y),colour="blue") +  
-  geom_point(data=CellE.masl.a, aes (y=y),colour="orange") +
-  
-  
-  geom_segment(data=CellE.masl.a,aes(x=as.Date('2020-11-01'), xend=Date[te], y=455, yend=y[te]), 
-               arrow = arrow(length = unit(0.1, "cm"))) +
-  
-  annotate("text", x = as.Date('2020-11-01'), y = 455, label = Current.measure.date, hjust = 0) +
-  
-  
-  annotate("text", x=as.Date('2020-12-01'), y=450, label= "Cell D and E Max = 449.3") +
-  annotate("text", x=as.Date('2020-04-01'), y=446, label= "Cell D Min = 447") +
-  annotate("text", x=as.Date('2020-04-01'), y=459, label= "Cell C Max = 458") +
-  annotate("text", x=as.Date('2020-04-01'), y=444, label= "Cell E Min = 445.5") +
-  
-  ggtitle("Scenario 1") +
-  scale_x_date(date_breaks = "2 month",labels = date_format("%b-%y"),limits = as.Date(c('2020-01-01','2022-01-01'))) +
-  scale_y_continuous(limits = c(440,465)) +
-  scale_color_manual(values=c("blue","orange"),name="Predicted")+
-  scale_fill_manual(name="Actual",values=c("blue","orange")) +
-  
-  xlab("Date") +
-  ylab("Water Level (masl)")  
- 
+
+
+
 
 ```
 
-```{r Strat1_K, results="asis", echo=FALSE, figure.align = "left", fig.height=4.5, fig.width=9}
+```{r Scenario 1 Potassium, results="asis",  figure.align = "left", fig.height=4.5, fig.width=9}
+
+##contains obs and pred values
+Potassium.data <- manipulate_data_for_Potassium('1', year)
 
 
 
-#Scenario
-#6
-ind.s <- which(LLCFpump.strategies.2020[,'Strategy']=='1')
-predicted <- LLCFpump.strategies.2020[ind.s, c('Date','CellE.K','CellD.K')]
+plot_observed_vs_predicted_Potassium(Potassium.data,'1',year,"Total Potassium (mg/L)",para.eqc)
 
-library(reshape)
- predicted.K <- melt(predicted, id=c("Date")) 
- predicted.K[,'Type'] <- rep('Predicted',nrow(predicted.K))
- #formatDate
-predicted.K[,'Date'] <- as.Date(predicted.K[,'Date'],"%m/%d/%Y")
-predicted.K[,'variable'] <- gsub('CellE.K','Cell E',predicted.K$variable)
-predicted.K[,'variable'] <- gsub('CellD.K','Cell D',predicted.K$variable)
-
-
-
-##Get observed values for plot
-dataAll.2020 <- getData(observedin,param,syear=2020)
-CellD.All <- dataAll.2020[which(dataAll.2020$LakeID=='Cell D'),]
-CellD.average <- na.omit(StationMeans(CellD.All))
-
-CellE.All <- dataAll.2020[which(dataAll.2020$LakeID=='Cell E'| dataAll.2020$LakeID=='161630 (LLCF)'),]
-CellE.average <- na.omit(StationMeans(CellE.All))
-
-
-
-actual.K <- rbind(CellD.average, CellE.average)
-actual.K[,'Type']<- rep('Actual',nrow(actual.K))
-actual.K <- actual.K[c('Date','LakeID','Impute','Type')]
-names(actual.K) <- names(predicted.K)
-##rename 161630 to cell E for plotting
-actual.K$variable[actual.K$variable =='161630 (LLCF)']<- 'Cell E'
-
-mydata <- rbind(predicted.K,actual.K)
-mydata[,'Legend'] <- paste(mydata[,'variable'],"-",mydata[,'Type'])
-
-
-my_shapes = c(16,NA,16,NA)
-    ggplot(data = mydata, aes(x = Date, y = value, color=Legend, shape=Legend )) +
-   geom_path(data = filter(mydata, Legend == "Cell D - Predicted") ) +
-   geom_path(data = filter(mydata, Legend == "Cell E - Predicted") ) +
-   geom_point(data = filter(mydata, Legend %in% c("Cell D - Actual", "Cell E - Actual"))) +
-   scale_colour_manual(values =  c("blue", "blue", "orange", "orange"),
-                       guide = guide_legend(override.aes = list(
-                          linetype = c( "blank","solid","blank","solid"),
-                          shape = my_shapes))) +
-                         
-   scale_shape_manual(values = my_shapes)+
-    geom_hline(yintercept=53, linetype="dashed", color = "orange") +
-    annotate("text", x=as.Date('2020-08-01'), y=56, label= "EQC = 53 mg/L") +
-    scale_x_date(date_breaks = "2 month",labels = date_format("%b-%y"),limits = as.Date(c('2020-01-01','2022-01-01'))) +
-    scale_y_continuous( limits = c(0,80)) +
-    xlab("Date") +
-    ylab("Total Potassium (mg/L)")+
-    labs(title = "Scenario 1", 
-       caption = "Observed concentrations are an average of the depths measured.\nCell E - Actual includes 1616-30.")+ 
-    theme(plot.caption = element_text(hjust = 0))
     
    
 ```
@@ -592,309 +328,89 @@ my_shapes = c(16,NA,16,NA)
 
 \newpage
 
-##Scenario 2:
+## Scenario 2:
 
 2020: Transfer of Cell D to Cell E for two weeks in July and two weeks in September 2020. Discharge at permit limit rates for 20 days in July 2020 (same as Scenario 1).
 
 2021: Cell D to Cell E transfers (0.5 Mm^3^ in July and 1.0 Mm^3^ in September) and Discharge to Leslie Lake July to August.
 
-```{r Strat2_Capacity, results="asis", echo=FALSE, figure.align = "left", fig.height=9, fig.width=8.5}
+
+```{r plots scenarios2, results="asis", figure.align = "left", fig.height=10, fig.width=8.5}
 
 ## Divide plotting area into 2 plots: with  Legend
 layout(matrix(c(1,2,3),3,1,byrow=T),c(5),c(5,5,1))
 
 ###Plot 1- Scenario 2- 2020
 ##############
-par(mar=c(5,8,2,4))
-
-##Scenario 2
-#Data generation
-
-#formatDate
-LLCFpump.strategies.2020[,'Date'] <- as.Date(LLCFpump.strategies.2020[,'Date'],"%m/%d/%Y")
-
-
-#Scenario
-#1
-ind.s <- which(LLCFpump.strategies.2020[,'Strategy']=='2')
-ind.m <- which(LLCFpump.strategies.2020[,'Month1']>= 6 & LLCFpump.strategies.2020[,'Year1']== 2020 )
-
-ind.ss <- intersect(ind.s,ind.m)
-Strat <- LLCFpump.strategies.2020[ind.ss,]
-
-bars <- Strat[,c('CellDtoE','CellEtoLeslie')]
-potassium.D <- Strat[,c('Date','CellD.K')]
-potassium.E <- Strat[,c('Date','CellE.K')]
-ymin= 0
-ymax=3500000
-barplot(as.matrix(t(bars)),beside=TRUE,yaxt = "n", xaxt="n",ylim=c(ymin,ymax),col=c("blue","orange"))
-
-axis(2,at=pretty(ymin:ymax), labels= formatC(pretty(ymin:ymax), format="g", big.mark=',',digits=nchar(as.character(ymax))),cex=.5,cex.axis=.85, las=2)
-
-axis(side = 1,at=c(2,5,8,11,14,17,20,23,26,29,32,35,38,41,44,47,50,53,56,59,62,65,68,71,74,77,80,83),labels = rep(c("1","2","3","4"),7), cex.axis=0.7,tcl=-0.25)
-axis(side = 1,at=seq(12,112,12), labels = FALSE,tcl=-1.5)
-
-mtext("Scenario 2 - 2020",side=3,line=0.5,font=2,cex=1.1,adj=0)
-
-box()
-
-
-
-mtext(text=c("June", "July","Aug","Sept","Oct","Nov","Dec"),side = 1, line = c(2), at = seq(7,84,by=12),cex=0.7)
-mtext(text='Week',side=1,line=c(1),at=-2, cex=0.7)
-ylab.text = expression('Pumped Volume (m'^"3"*')')
-
-mtext(ylab.text,side=2,line=4,font=2)
-
-par(new = TRUE)
-ymax <- 70
-plot(potassium.D, type = "n", xlab = "", ylab = "", yaxt = "n", xaxt="n",ylim = c(0, ymax))
-lines(potassium.D, col = "blue", lwd = 2)
-lines(potassium.E, col = "orange", lwd = 2)
-#add EQC
-segments(as.Date("2020-01-01"),53,as.Date("2020-12-31"),53,col='orange',lty=2)
-
-
-##add Cumulative Volume
-
-CellE.Vol <- paste('Cell E To Leslie Total = ',formatC(sum(bars[2]), format="g", big.mark=',',digits=nchar(as.character(sum(bars[2]))))) 
-CellD.Vol <- paste('Cell D To Cell E Total = ',formatC(sum(bars[1]), format="g", big.mark=',',digits=nchar(as.character(sum(bars[1])))))
-
-CellE.Vol.T <-  bquote(.(CellE.Vol) ~ m^3)
-CellD.Vol.T <-  bquote(.(CellD.Vol) ~ m^3)
-
-text(as.Date("2020-08-01"),27,CellE.Vol.T,adj= 0,cex=0.9)
-text(as.Date("2020-08-01"),22,CellD.Vol.T,adj= 0,cex=0.9)
-
-axis(4,at=pretty(ymin:ymax),cex=.5,cex.axis=.85, las=2)
-mtext("Potassium (mg/L)", side = 4, line = 3, font = 2)
+plot_pumped_volume(2020,'2', 6,para.eqc)
 
 par(mar=c(5,8,2,6))
 
 ###Plot 2- Scenario 2- 2021
 ##############
-par(mar=c(5,8,2,4))
-
-##Scenario 2
-#Data generation
-
-#formatDate
-LLCFpump.strategies.2020[,'Date'] <- as.Date(LLCFpump.strategies.2020[,'Date'],"%m/%d/%Y")
-
-
-#Scenario
-#1
-ind.s <- which(LLCFpump.strategies.2020[,'Strategy']=='2')
-ind.m <- which(LLCFpump.strategies.2020[,'Month1']>= 6 & LLCFpump.strategies.2020[,'Year1']== 2021 )
-
-ind.ss <- intersect(ind.s,ind.m)
-Strat <- LLCFpump.strategies.2020[ind.ss,]
-
-bars <- Strat[,c('CellDtoE','CellEtoLeslie')]
-potassium.D <- Strat[,c('Date','CellD.K')]
-potassium.E <- Strat[,c('Date','CellE.K')]
-ymin= 0
-ymax=3500000
-barplot(as.matrix(t(bars)),beside=TRUE,yaxt = "n", xaxt="n",ylim=c(ymin,ymax),col=c("blue","orange"))
-
-axis(2,at=pretty(ymin:ymax), labels= formatC(pretty(ymin:ymax), format="g", big.mark=',',digits=nchar(as.character(ymax))),cex=.5,cex.axis=.85, las=2)
-
-axis(side = 1,at=c(2,5,8,11,14,17,20,23,26,29,32,35,38,41,44,47,50,53,56,59,62,65,68,71,74,77,80,83),labels = rep(c("1","2","3","4"),7), cex.axis=0.7,tcl=-0.25)
-axis(side = 1,at=seq(12,112,12), labels = FALSE,tcl=-1.5)
-
-mtext("Scenario 2 - 2021",side=3,line=0.5,font=2,cex=1.1,adj=0)
-
-box()
-
-
-
-mtext(text=c("June", "July","Aug","Sept","Oct","Nov","Dec"),side = 1, line = c(2), at = seq(7,84,by=12),cex=0.7)
-mtext(text='Week',side=1,line=c(1),at=-2, cex=0.7)
-ylab.text = expression('Pumped Volume (m'^"3"*')')
-
-mtext(ylab.text,side=2,line=4,font=2)
-
-par(new = TRUE)
-ymax <- 70
-plot(potassium.D, type = "n", xlab = "", ylab = "", yaxt = "n", xaxt="n",ylim = c(0, ymax))
-lines(potassium.D, col = "blue", lwd = 2)
-lines(potassium.E, col = "orange", lwd = 2)
-#add EQC
-segments(as.Date("2021-01-01"),53,as.Date("2021-12-31"),53,col='orange',lty=2)
-
-
-##add Cumulative Volume
-
-CellE.Vol <- paste('Cell E To Leslie Total = ',formatC(round(sum(bars[2]),0), format="g", big.mark=',',digits=nchar(as.character(round(sum(bars[2]),0))))) 
-CellD.Vol <- paste('Cell D To Cell E Total = ',formatC(round(sum(bars[1]),0), format="g", big.mark=',',digits=nchar(as.character(round(sum(bars[1]),0)))))
-
-CellE.Vol.T <-  bquote(.(CellE.Vol) ~ m^3)
-CellD.Vol.T <-  bquote(.(CellD.Vol) ~ m^3)
-
-text(as.Date("2021-08-01"),25,CellE.Vol.T,adj= 0, cex=0.9)
-text(as.Date("2021-08-01"),20,CellD.Vol.T,adj= 0, cex=0.9)
-
-axis(4,at=pretty(ymin:ymax),cex=.5,cex.axis=.85, las=2)
-mtext("Potassium (mg/L)", side = 4, line = 3, font = 2)
+plot_pumped_volume(2021,'2', 6,para.eqc)
 
 ###2. Legend
 
-par(mar=c(1,1,1,1))
-plot.new()
-plot.window(c(0,1), c(0,1));
-box()
-l.cex =1.1
-legend.names <- c('Cell D to E', 'Cell E to Leslie Lake', 'Potassium - Cell D', 'Potassium - Cell E')
-legend.col <- c('blue','orange','blue','orange')
+plot_legends(para.eqc)
 
-
-
-legend(x=0.4,y=.38,'EQC = 53 mg/L',lty=2,col= 'orange', bty='n',cex = l.cex,lwd=1)
-
-legend(x=0.02,y=.85,legend.names[1:2],pch=c(15,15),pt.bg=legend.col[1:2],col= legend.col[1:2], pt.cex= 2.5,bty='n',cex = l.cex)
-
-legend(x=0.4,y=.85,legend.names[3:4],lty=c(1,1),col= legend.col[1:2],bty='n',lwd=1.1,cex = l.cex)
 ```
 
-##Predicted versus Observed
+## Predicted versus Observed
 
 
-```{r Strat2_WL, results="asis", echo=FALSE, figure.align = "left", fig.height=4.5, fig.width=8.5}
-#formatDate
-LLCFpump.strategies.2020[,'Date'] <- as.Date(LLCFpump.strategies.2020[,'Date'],"%m/%d/%Y")
+```{r Scenario 2 Water levels, results="asis", figure.align = "left", fig.height=4.5, fig.width=8.5}
 
-#Scenario
-#4
-ind.s <- which(LLCFpump.strategies.2020[,'Strategy']=='2')
-predicted.wl <- LLCFpump.strategies.2020[ind.s, c('Date','CellC.masl','CellD.masl','CellE.masl')]
- 
-  WL<-loadWorkbook("Water.Levels2020.xls")
-  #Raw data
- CellC.masl.a<-readWorksheet(WL,sheet="CellC.masl.a",startRow=1,header=TRUE)%>%
-   mutate(Date = as.Date(Date, "%m/%d/%Y",tz="America/New_York"))%>%
-   filter(Date >= as.Date("2020-01-01"))
- CellD.masl.a<-readWorksheet(WL,sheet="CellD.masl.a",startRow=1,header=TRUE)%>%
-   mutate(Date = as.Date(Date, "%m/%d/%Y",tz="America/New_York"))%>%
-   filter(Date >= as.Date("2020-01-01"))
- CellE.masl.a<-readWorksheet(WL,sheet="CellE.masl.a",startRow=1,header=TRUE)%>%
-   mutate(Date = as.Date(Date, "%m/%d/%Y",tz="America/New_York"))%>%
-   filter(Date >= as.Date("2020-01-01"))
+####Scenario 2- obs vs pred Water levels
+obs_and_pred_WL <- manipulate_data_for_plots('2',year)
 
+##predicted WL
+predicted.wl <- obs_and_pred_WL[[1]]
+
+##observed WL for each CEll C,D,E
+CellC.masl.a <- obs_and_pred_WL[[2]]
+CellD.masl.a <- obs_and_pred_WL[[3]]
+CellE.masl.a <- obs_and_pred_WL[[4]]
 
 
 tc <- nrow(CellC.masl.a)
 td <- nrow(CellD.masl.a)
 te <- nrow(CellE.masl.a)
 
-Current.measure.date <- "Measured on July 5, 2020"
-last.measure.date <- "Measured on July 5, 2020"
 
+######## Scenario 2, water level
 
+plot_observed_vs_predicted(predicted.wl,
+                           CellC.masl.a,
+                           CellD.masl.a,
+                           CellE.masl.a,
+                           scenario.num = '2',
+                           year,
+                           variable = 'Water Level (masl)')
 
-ggplot(predicted.wl, aes(Date)) + 
    
-  geom_line(aes(y = CellD.masl, colour = "Cell D")) +
-  geom_line(aes(y = CellE.masl, colour = "Cell E")) +
-  geom_hline(yintercept=449.3, linetype="dashed", color = "blue") +
-  geom_hline(yintercept=447, linetype="dashed", color = "blue") +
-  geom_hline(yintercept=458, linetype="dashed", color = "purple") +
-  geom_hline(yintercept=445.5, linetype="dashed", color = "orange") +
-  
-  geom_point(data=CellC.masl.a, aes (y=y),colour="purple") +  
-  geom_point(data=CellD.masl.a, aes (y=y),colour="blue") +  
-  geom_point(data=CellE.masl.a, aes (y=y),colour="orange") +
-  
-  
-  geom_segment(data=CellE.masl.a,aes(x=as.Date('2020-11-01'), xend=Date[te], y=455, yend=y[te]), 
-               arrow = arrow(length = unit(0.1, "cm"))) +
-  
-  annotate("text", x = as.Date('2020-11-01'), y = 455, label = Current.measure.date, hjust = 0) +
-  
-  
-  annotate("text", x=as.Date('2020-12-01'), y=450, label= "Cell D and E Max = 449.3") +
-  annotate("text", x=as.Date('2020-04-01'), y=446, label= "Cell D Min = 447") +
-  annotate("text", x=as.Date('2020-04-01'), y=459, label= "Cell C Max = 458") +
-  annotate("text", x=as.Date('2020-04-01'), y=444, label= "Cell E Min = 445.5") +
-  
-  ggtitle("Scenario 2") +
-  scale_x_date(date_breaks = "2 month",labels = date_format("%b-%y"),limits = as.Date(c('2020-01-01','2022-01-01'))) +
-  scale_y_continuous(limits = c(440,465)) +
-  scale_color_manual(values=c("blue","orange"),name="Predicted")+
-  scale_fill_manual(name="Actual",values=c("blue","orange")) +
-  
-  xlab("Date") +
-  ylab("Water Level (masl)")  
- 
+
+
+
 
 ```
 
-```{r Strat2_K, results="asis", echo=FALSE, figure.align = "left", fig.height=4.5, fig.width=9}
+```{r Scenario 2 Potassium, results="asis",  figure.align = "left", fig.height=4.5, fig.width=9}
+
+##contains obs and pred values
+Potassium.data <- manipulate_data_for_Potassium('2', year)
 
 
 
-#Scenario
-#6
-ind.s <- which(LLCFpump.strategies.2020[,'Strategy']=='2')
-predicted <- LLCFpump.strategies.2020[ind.s, c('Date','CellE.K','CellD.K')]
+plot_observed_vs_predicted_Potassium(Potassium.data,'2',year,"Total Potassium (mg/L)",para.eqc)
 
-library(reshape)
- predicted.K <- melt(predicted, id=c("Date")) 
- predicted.K[,'Type'] <- rep('Predicted',nrow(predicted.K))
- #formatDate
-predicted.K[,'Date'] <- as.Date(predicted.K[,'Date'],"%m/%d/%Y")
-predicted.K[,'variable'] <- gsub('CellE.K','Cell E',predicted.K$variable)
-predicted.K[,'variable'] <- gsub('CellD.K','Cell D',predicted.K$variable)
-
-
-
-##Get observed values for plot
-dataAll.2020 <- getData(observedin,param,syear=2020)
-CellD.All <- dataAll.2020[which(dataAll.2020$LakeID=='Cell D'),]
-CellD.average <- na.omit(StationMeans(CellD.All))
-
-CellE.All <- dataAll.2020[which(dataAll.2020$LakeID=='Cell E'| dataAll.2020$LakeID=='161630 (LLCF)'),]
-CellE.average <- na.omit(StationMeans(CellE.All))
-
-
-
-actual.K <- rbind(CellD.average, CellE.average)
-actual.K[,'Type']<- rep('Actual',nrow(actual.K))
-actual.K <- actual.K[c('Date','LakeID','Impute','Type')]
-names(actual.K) <- names(predicted.K)
-##rename 161630 to cell E for plotting
-actual.K$variable[actual.K$variable =='161630 (LLCF)']<- 'Cell E'
-
-mydata <- rbind(predicted.K,actual.K)
-mydata[,'Legend'] <- paste(mydata[,'variable'],"-",mydata[,'Type'])
-
-
-my_shapes = c(16,NA,16,NA)
-    ggplot(data = mydata, aes(x = Date, y = value, color=Legend, shape=Legend )) +
-   geom_path(data = filter(mydata, Legend == "Cell D - Predicted") ) +
-   geom_path(data = filter(mydata, Legend == "Cell E - Predicted") ) +
-   geom_point(data = filter(mydata, Legend %in% c("Cell D - Actual", "Cell E - Actual"))) +
-   scale_colour_manual(values =  c("blue", "blue", "orange", "orange"),
-                       guide = guide_legend(override.aes = list(
-                          linetype = c( "blank","solid","blank","solid"),
-                          shape = my_shapes))) +
-                         
-   scale_shape_manual(values = my_shapes)+
-    geom_hline(yintercept=53, linetype="dashed", color = "orange") +
-    annotate("text", x=as.Date('2020-08-01'), y=56, label= "EQC = 53 mg/L") +
-    scale_x_date(date_breaks = "2 month",labels = date_format("%b-%y"),limits = as.Date(c('2020-01-01','2022-01-01'))) +
-    scale_y_continuous( limits = c(0,80)) +
-    xlab("Date") +
-    ylab("Total Potassium (mg/L)")+
-    labs(title = "Scenario 2", 
-       caption = "Observed concentrations are an average of the depths measured.\nCell E - Actual includes 1616-30.")+ 
-    theme(plot.caption = element_text(hjust = 0))
     
    
 ```
 
 \newpage
 
-##Scenario 3:
+## Scenario 3:
 
 2020: Transfer of Cell D to Cell E for two weeks in July and two weeks in September 2020. Discharge at permit limit rates for 20 days in July and throughout August 2020.
 
@@ -902,297 +418,80 @@ my_shapes = c(16,NA,16,NA)
 
 
 
-
-```{r Strat3_Capacity, results="asis", echo=FALSE, figure.align = "left", fig.height=10, fig.width=8.5}
+```{r plots scenarios3, results="asis", figure.align = "left", fig.height=10, fig.width=8.5}
 
 ## Divide plotting area into 2 plots: with  Legend
 layout(matrix(c(1,2,3),3,1,byrow=T),c(5),c(5,5,1))
 
 ###Plot 1- Scenario 3- 2020
 ##############
-par(mar=c(5,8,2,4))
-
-##Scenario 3
-#Data generation
-
-#formatDate
-LLCFpump.strategies.2020[,'Date'] <- as.Date(LLCFpump.strategies.2020[,'Date'],"%m/%d/%Y")
-
-
-#Scenario
-#1
-ind.s <- which(LLCFpump.strategies.2020[,'Strategy']=='3')
-ind.m <- which(LLCFpump.strategies.2020[,'Month1']>= 6 & LLCFpump.strategies.2020[,'Year1']== 2020 )
-
-ind.ss <- intersect(ind.s,ind.m)
-Strat <- LLCFpump.strategies.2020[ind.ss,]
-
-bars <- Strat[,c('CellDtoE','CellEtoLeslie')]
-potassium.D <- Strat[,c('Date','CellD.K')]
-potassium.E <- Strat[,c('Date','CellE.K')]
-ymin= 0
-ymax=3500000
-barplot(as.matrix(t(bars)),beside=TRUE,yaxt = "n", xaxt="n",ylim=c(ymin,ymax),col=c("blue","orange"))
-
-axis(2,at=pretty(ymin:ymax), labels= formatC(pretty(ymin:ymax), format="g", big.mark=',',digits=nchar(as.character(ymax))),cex=.5,cex.axis=.85, las=2)
-
-axis(side = 1,at=c(2,5,8,11,14,17,20,23,26,29,32,35,38,41,44,47,50,53,56,59,62,65,68,71,74,77,80,83),labels = rep(c("1","2","3","4"),7), cex.axis=0.7,tcl=-0.25)
-axis(side = 1,at=seq(12,112,12), labels = FALSE,tcl=-1.5)
-
-mtext("Scenario 3 - 2020",side=3,line=0.5,font=2,cex=1.1,adj=0)
-
-box()
-
-
-
-mtext(text=c("June", "July","Aug","Sept","Oct","Nov","Dec"),side = 1, line = c(2), at = seq(7,84,by=12),cex=0.7)
-mtext(text='Week',side=1,line=c(1),at=-2, cex=0.7)
-ylab.text = expression('Pumped Volume (m'^"3"*')')
-
-mtext(ylab.text,side=2,line=4,font=2)
-
-par(new = TRUE)
-ymax <- 70
-plot(potassium.D, type = "n", xlab = "", ylab = "", yaxt = "n", xaxt="n",ylim = c(0, ymax))
-lines(potassium.D, col = "blue", lwd = 2)
-lines(potassium.E, col = "orange", lwd = 2)
-#add EQC
-segments(as.Date("2020-01-01"),53,as.Date("2020-12-31"),53,col='orange',lty=2)
-
-
-##add Cumulative Volume
-
-CellE.Vol <- paste('Cell E To Leslie Total = ',formatC(sum(bars[2]), format="g", big.mark=',',digits=nchar(as.character(sum(bars[2]))))) 
-CellD.Vol <- paste('Cell D To Cell E Total = ',formatC(sum(bars[1]), format="g", big.mark=',',digits=nchar(as.character(sum(bars[1])))))
-
-CellE.Vol.T <-  bquote(.(CellE.Vol) ~ m^3)
-CellD.Vol.T <-  bquote(.(CellD.Vol) ~ m^3)
-
-text(as.Date("2020-08-01"),27,CellE.Vol.T,adj= 0,cex=0.9)
-text(as.Date("2020-08-01"),22,CellD.Vol.T,adj= 0,cex=0.9)
-
-axis(4,at=pretty(ymin:ymax),cex=.5,cex.axis=.85, las=2)
-mtext("Potassium (mg/L)", side = 4, line = 3, font = 2)
+plot_pumped_volume(2020,'3', 6,para.eqc)
 
 par(mar=c(5,8,2,6))
 
 ###Plot 2- Scenario 3- 2021
 ##############
-par(mar=c(5,8,2,4))
-
-##Scenario 3
-#Data generation
-
-#formatDate
-LLCFpump.strategies.2020[,'Date'] <- as.Date(LLCFpump.strategies.2020[,'Date'],"%m/%d/%Y")
-
-
-#Scenario
-#1
-ind.s <- which(LLCFpump.strategies.2020[,'Strategy']=='3')
-ind.m <- which(LLCFpump.strategies.2020[,'Month1']>= 6 & LLCFpump.strategies.2020[,'Year1']== 2021 )
-
-ind.ss <- intersect(ind.s,ind.m)
-Strat <- LLCFpump.strategies.2020[ind.ss,]
-
-bars <- Strat[,c('CellDtoE','CellEtoLeslie')]
-potassium.D <- Strat[,c('Date','CellD.K')]
-potassium.E <- Strat[,c('Date','CellE.K')]
-ymin= 0
-ymax=3500000
-barplot(as.matrix(t(bars)),beside=TRUE,yaxt = "n", xaxt="n",ylim=c(ymin,ymax),col=c("blue","orange"))
-
-axis(2,at=pretty(ymin:ymax), labels= formatC(pretty(ymin:ymax), format="g", big.mark=',',digits=nchar(as.character(ymax))),cex=.5,cex.axis=.85, las=2)
-
-axis(side = 1,at=c(2,5,8,11,14,17,20,23,26,29,32,35,38,41,44,47,50,53,56,59,62,65,68,71,74,77,80,83),labels = rep(c("1","2","3","4"),7), cex.axis=0.7,tcl=-0.25)
-axis(side = 1,at=seq(12,112,12), labels = FALSE,tcl=-1.5)
-
-mtext("Scenario 3 - 2021",side=3,line=0.5,font=2,cex=1.1,adj=0)
-
-box()
-
-
-
-mtext(text=c("June", "July","Aug","Sept","Oct","Nov","Dec"),side = 1, line = c(2), at = seq(7,84,by=12),cex=0.7)
-mtext(text='Week',side=1,line=c(1),at=-2, cex=0.7)
-ylab.text = expression('Pumped Volume (m'^"3"*')')
-
-mtext(ylab.text,side=2,line=4,font=2)
-
-par(new = TRUE)
-ymax <- 70
-plot(potassium.D, type = "n", xlab = "", ylab = "", yaxt = "n", xaxt="n",ylim = c(0, ymax))
-lines(potassium.D, col = "blue", lwd = 2)
-lines(potassium.E, col = "orange", lwd = 2)
-#add EQC
-segments(as.Date("2021-01-01"),53,as.Date("2021-12-31"),53,col='orange',lty=2)
-
-
-##add Cumulative Volume
-
-CellE.Vol <- paste('Cell E To Leslie Total = ',formatC(round(sum(bars[2]),0), format="g", big.mark=',',digits=nchar(as.character(round(sum(bars[2]),0))))) 
-CellD.Vol <- paste('Cell D To Cell E Total = ',formatC(round(sum(bars[1]),0), format="g", big.mark=',',digits=nchar(as.character(round(sum(bars[1]),0)))))
-
-CellE.Vol.T <-  bquote(.(CellE.Vol) ~ m^3)
-CellD.Vol.T <-  bquote(.(CellD.Vol) ~ m^3)
-
-text(as.Date("2021-08-01"),25,CellE.Vol.T,adj= 0, cex=0.9)
-text(as.Date("2021-08-01"),20,CellD.Vol.T,adj= 0, cex=0.9)
-
-axis(4,at=pretty(ymin:ymax),cex=.5,cex.axis=.85, las=2)
-mtext("Potassium (mg/L)", side = 4, line = 3, font = 2)
+plot_pumped_volume(2021,'3', 6,para.eqc)
 
 ###2. Legend
 
-par(mar=c(1,1,1,1))
-plot.new()
-plot.window(c(0,1), c(0,1));
-box()
-l.cex =1.1
-legend.names <- c('Cell D to E', 'Cell E to Leslie Lake', 'Potassium - Cell D', 'Potassium - Cell E')
-legend.col <- c('blue','orange','blue','orange')
+plot_legends(para.eqc)
 
-
-
-legend(x=0.4,y=.38,'EQC = 53 mg/L',lty=2,col= 'orange', bty='n',cex = l.cex,lwd=1)
-
-legend(x=0.02,y=.85,legend.names[1:2],pch=c(15,15),pt.bg=legend.col[1:2],col= legend.col[1:2], pt.cex= 2.5,bty='n',cex = l.cex)
-
-legend(x=0.4,y=.85,legend.names[3:4],lty=c(1,1),col= legend.col[1:2],bty='n',lwd=1.1,cex = l.cex)
 ```
 
-##Predicted versus Observed
+
+## Predicted versus Observed
 
 
-```{r Strat3_WL, results="asis", echo=FALSE, figure.align = "left", fig.height=4.5, fig.width=8.5}
-#formatDate
-LLCFpump.strategies.2020[,'Date'] <- as.Date(LLCFpump.strategies.2020[,'Date'],"%m/%d/%Y")
+```{r Scenario 3 Water levels, results="asis", figure.align = "left", fig.height=4.5, fig.width=8.5}
 
-#Scenario
-#4
-ind.s <- which(LLCFpump.strategies.2020[,'Strategy']=='3')
-predicted.wl <- LLCFpump.strategies.2020[ind.s, c('Date','CellC.masl','CellD.masl','CellE.masl')]
- 
-  WL<-loadWorkbook("Water.Levels2020.xls")
-  #Raw data
- CellC.masl.a<-readWorksheet(WL,sheet="CellC.masl.a",startRow=1,header=TRUE)%>%
-   mutate(Date = as.Date(Date, "%m/%d/%Y",tz="America/New_York"))%>%
-   filter(Date >= as.Date("2020-01-01"))
- CellD.masl.a<-readWorksheet(WL,sheet="CellD.masl.a",startRow=1,header=TRUE)%>%
-   mutate(Date = as.Date(Date, "%m/%d/%Y",tz="America/New_York"))%>%
-   filter(Date >= as.Date("2020-01-01"))
- CellE.masl.a<-readWorksheet(WL,sheet="CellE.masl.a",startRow=1,header=TRUE)%>%
-   mutate(Date = as.Date(Date, "%m/%d/%Y",tz="America/New_York"))%>%
-   filter(Date >= as.Date("2020-01-01"))
+####Scenario 2- obs vs pred Water levels
+obs_and_pred_WL <- manipulate_data_for_plots('3',year)
 
+##predicted WL
+predicted.wl <- obs_and_pred_WL[[1]]
+
+##observed WL for each CEll C,D,E
+CellC.masl.a <- obs_and_pred_WL[[2]]
+CellD.masl.a <- obs_and_pred_WL[[3]]
+CellE.masl.a <- obs_and_pred_WL[[4]]
 
 
 tc <- nrow(CellC.masl.a)
 td <- nrow(CellD.masl.a)
 te <- nrow(CellE.masl.a)
 
-Current.measure.date <- "Measured on July 5, 2020"
-last.measure.date <- "Measured on July 5, 2020"
 
+######## Scenario 2, water level
 
+plot_observed_vs_predicted(predicted.wl,
+                           CellC.masl.a,
+                           CellD.masl.a,
+                           CellE.masl.a,
+                           scenario.num = '3',
+                           year,
+                           variable = 'Water Level (masl)')
 
-ggplot(predicted.wl, aes(Date)) + 
    
-  geom_line(aes(y = CellD.masl, colour = "Cell D")) +
-  geom_line(aes(y = CellE.masl, colour = "Cell E")) +
-  geom_hline(yintercept=449.3, linetype="dashed", color = "blue") +
-  geom_hline(yintercept=447, linetype="dashed", color = "blue") +
-  geom_hline(yintercept=458, linetype="dashed", color = "purple") +
-  geom_hline(yintercept=445.5, linetype="dashed", color = "orange") +
-  
-  geom_point(data=CellC.masl.a, aes (y=y),colour="purple") +  
-  geom_point(data=CellD.masl.a, aes (y=y),colour="blue") +  
-  geom_point(data=CellE.masl.a, aes (y=y),colour="orange") +
-  
-  
-  geom_segment(data=CellE.masl.a,aes(x=as.Date('2020-11-01'), xend=Date[te], y=455, yend=y[te]), 
-               arrow = arrow(length = unit(0.1, "cm"))) +
-  
-  annotate("text", x = as.Date('2020-11-01'), y = 455, label = Current.measure.date, hjust = 0) +
-  
-  
-  annotate("text", x=as.Date('2020-12-01'), y=450, label= "Cell D and E Max = 449.3") +
-  annotate("text", x=as.Date('2020-04-01'), y=446, label= "Cell D Min = 447") +
-  annotate("text", x=as.Date('2020-04-01'), y=459, label= "Cell C Max = 458") +
-  annotate("text", x=as.Date('2020-04-01'), y=444, label= "Cell E Min = 445.5") +
-  
-  ggtitle("Scenario 3") +
-  scale_x_date(date_breaks = "2 month",labels = date_format("%b-%y"),limits = as.Date(c('2020-01-01','2022-01-01'))) +
-  scale_y_continuous(limits = c(440,465)) +
-  scale_color_manual(values=c("blue","orange"),name="Predicted")+
-  scale_fill_manual(name="Actual",values=c("blue","orange")) +
-  
-  xlab("Date") +
-  ylab("Water Level (masl)")  
- 
+
+
+
 
 ```
 
-```{r Strat3_K, results="asis", echo=FALSE, figure.align = "left", fig.height=4.5, fig.width=9}
+```{r Scenario 3 Potassium, results="asis",  figure.align = "left", fig.height=4.5, fig.width=9}
+
+##contains obs and pred values
+Potassium.data <- manipulate_data_for_Potassium('3', year)
 
 
 
-#Scenario
-#6
-ind.s <- which(LLCFpump.strategies.2020[,'Strategy']=='3')
-predicted <- LLCFpump.strategies.2020[ind.s, c('Date','CellE.K','CellD.K')]
+plot_observed_vs_predicted_Potassium(Potassium.data,'3',year,"Total Potassium (mg/L)",para.eqc)
 
-library(reshape)
- predicted.K <- melt(predicted, id=c("Date")) 
- predicted.K[,'Type'] <- rep('Predicted',nrow(predicted.K))
- #formatDate
-predicted.K[,'Date'] <- as.Date(predicted.K[,'Date'],"%m/%d/%Y")
-predicted.K[,'variable'] <- gsub('CellE.K','Cell E',predicted.K$variable)
-predicted.K[,'variable'] <- gsub('CellD.K','Cell D',predicted.K$variable)
-
-
-
-##Get observed values for plot
-dataAll.2020 <- getData(observedin,param,syear=2020)
-CellD.All <- dataAll.2020[which(dataAll.2020$LakeID=='Cell D'),]
-CellD.average <- na.omit(StationMeans(CellD.All))
-
-CellE.All <- dataAll.2020[which(dataAll.2020$LakeID=='Cell E'| dataAll.2020$LakeID=='161630 (LLCF)'),]
-CellE.average <- na.omit(StationMeans(CellE.All))
-
-
-
-actual.K <- rbind(CellD.average, CellE.average)
-actual.K[,'Type']<- rep('Actual',nrow(actual.K))
-actual.K <- actual.K[c('Date','LakeID','Impute','Type')]
-names(actual.K) <- names(predicted.K)
-##rename 161630 to cell E for plotting
-actual.K$variable[actual.K$variable =='161630 (LLCF)']<- 'Cell E'
-
-mydata <- rbind(predicted.K,actual.K)
-mydata[,'Legend'] <- paste(mydata[,'variable'],"-",mydata[,'Type'])
-
-
-my_shapes = c(16,NA,16,NA)
-    ggplot(data = mydata, aes(x = Date, y = value, color=Legend, shape=Legend )) +
-   geom_path(data = filter(mydata, Legend == "Cell D - Predicted") ) +
-   geom_path(data = filter(mydata, Legend == "Cell E - Predicted") ) +
-   geom_point(data = filter(mydata, Legend %in% c("Cell D - Actual", "Cell E - Actual"))) +
-   scale_colour_manual(values =  c("blue", "blue", "orange", "orange"),
-                       guide = guide_legend(override.aes = list(
-                          linetype = c( "blank","solid","blank","solid"),
-                          shape = my_shapes))) +
-                         
-   scale_shape_manual(values = my_shapes)+
-    geom_hline(yintercept=53, linetype="dashed", color = "orange") +
-    annotate("text", x=as.Date('2020-08-01'), y=56, label= "EQC = 53 mg/L") +
-    scale_x_date(date_breaks = "2 month",labels = date_format("%b-%y"),limits = as.Date(c('2020-01-01','2022-01-01'))) +
-    scale_y_continuous( limits = c(0,80)) +
-    xlab("Date") +
-    ylab("Total Potassium (mg/L)")+
-    labs(title = "Scenario 3", 
-       caption = "Observed concentrations are an average of the depths measured.\nCell E - Actual includes 1616-30.")+ 
-    theme(plot.caption = element_text(hjust = 0))
     
    
 ```
+
+
+
+
