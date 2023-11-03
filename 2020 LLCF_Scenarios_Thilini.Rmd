@@ -219,6 +219,8 @@ Model Uncertainties
 
 Table 1 provides a summary of the volumes for pumping in Discharge in 2020 and 2021 for each of the three proposed Scenarios. Table 2 provides the projected Leslie Lake concentrations under ice (Potassium Benchmark in Leslie Lake is 64 mg/L)
 
+
+
 ### Table 1. LLCF Pumping Volumes (Mm^3^):
 | Pumped Flow Mm^3^  |Cell E to Leslie|Cell D to Cell E
 |---------------------|:--------:|:--------:|
@@ -244,6 +246,7 @@ Table 1 provides a summary of the volumes for pumping in Discharge in 2020 and 2
 |Scenario 3 [K] (mg/L) |48.9|53.4|56.9|
 
 \newpage
+
 ## Scenario 1:
 
 2020: Transfer of Cell D to Cell E at 1.0 Mm^3^ per week for four weeks beginning July 10, 2020. Discharge at permit limit rates for 20 days in July 2020.
